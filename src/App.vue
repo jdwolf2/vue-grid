@@ -1,478 +1,193 @@
+<!-- src/App.vue -->
 <template>
-  <div class="total-container">
-    <div class="page-container">
-      <div class="block-container">
-        <div class="dateRangePicker">
-          <ejs-daterangepicker
-            v-model="selectedDateRange"
-            format="MMM d, yyyy"
-            separator=" to "
-            :allowEdit="false"
-            :openOnFocus="false"
-            placeholder="Select a Date Range"
-            :showClearButton="true"
-            :value="value"
-            :autoFit="true"
-            :responsive="true"
-            :fullScreenMode="false"
-          ></ejs-daterangepicker>
-        </div>
-        <!-- <div>
-          <EjsTimepicker>
-            <ejs-timepicker
-              v-model="selectedTime"
-              placeholder="Select a Time"
-              :format="format"
-              :step="step"
-              :strictMode="strictMode"
-              :value="value"
-              :width="width"
-            ></ejs-timepicker>
-          </EjsTimepicker>
-        </div> -->
+  <div id="app">
+    <!-- If user is null, nothing renders here because signIn() already redirected -->
+    <div v-if="user">
+      <!-- Header with Sign Out button -->
+      <header class="header">
+        <h1>Post Data Grid</h1>
+        <button @click="signOut">Sign Out</button>
+      </header>
 
-        <div class="logo">
-          <img src="./assets/tableLogo.jpg" alt="AccuSalt Logo" class="logo" />
+      <!-- Date‐range picker + Load button -->
+      <section class="controls">
+        <label>
+          Start Date:
+          <input type="date" v-model="startDateString" />
+        </label>
+        <label>
+          End Date:
+          <input type="date" v-model="endDateString" />
+        </label>
+        <button @click="loadData" :disabled="!isDateRangeValid">
+          Load Data
+        </button>
+      </section>
+
+      <!-- Table area -->
+      <section class="table-container">
+        <table v-if="itemsFetched && items.length">
+          <thead>
+            <tr>
+              <th>customerName</th>
+              <th>uStopTime</th>
+              <th>device</th>
+              <th>duration</th>
+              <th>lat</th>
+              <th>lon</th>
+              <th>rate</th>
+              <th>sidNum</th>
+              <th>siteName</th>
+              <th>speed</th>
+              <th>startDate</th>
+              <th>statTime</th>
+              <th>stopTime</th>
+              <th>tons</th>
+              <th>truck</th>
+              <th>uStartTime</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="item in items"
+              :key="item.uStopTime + '-' + item.customerName"
+            >
+              <td>{{ item.customerName }}</td>
+              <td>{{ item.uStopTime }}</td>
+              <td>{{ item.device }}</td>
+              <td>{{ item.duration }}</td>
+              <td>{{ item.lat }}</td>
+              <td>{{ item.lon }}</td>
+              <td>{{ item.rate }}</td>
+              <td>{{ item.sidNum }}</td>
+              <td>{{ item.siteName }}</td>
+              <td>{{ item.speed }}</td>
+              <td>{{ item.startDate }}</td>
+              <td>{{ item.statTime }}</td>
+              <td>{{ item.stopTime }}</td>
+              <td>{{ item.tons }}</td>
+              <td>{{ item.truck }}</td>
+              <td>{{ item.uStartTime }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- When no items yet (but user is signed in), show prompt -->
+        <div v-else-if="itemsFetched && !items.length" class="empty-prompt">
+          Please Select a Date Range
         </div>
-      </div>
-      <div id="table-container">
-        <div id="table-div">
-          <!-- <button @click="scrollLeft">Scroll Left</button>
-          <button @click="scrollRight">Scroll Right</button>
-          <button @click="scrollTop">Scroll Top</button>
-          <button @click="scrollBottom">Scroll Bottom</button> -->
-          <EjsGrid
-            ref="gridRef"
-            id="gridcomp"
-            :dataSource="data"
-            :allowScrolling="true"
-            :rowHeight="40"
-            :enableAltRow="true"
-            :allowReordering="true"
-            :allowExcelExport="true"
-            :columnQueryMode="'ExcludeHidden'"
-            :allowPdfExport="true"
-            :showColumnChooser="true"
-            :enableScrolling="true"
-            :scrollSettings="scrollSettings"
-            :allowPaging="false"
-            :allowGrouping="true"
-            :allowSorting="true"
-            :showColumnMenu="true"
-            :groupSettings="groupOptions"
-            :allowFiltering="true"
-            :filterSettings="filterSettings"
-            :allowTextWrap="true"
-            :autoFit="true"
-            :padding-right="0"
-            :width="'auto'"
-            :height="'400px'"
-            :frozenRows="0"
-            :frozenColumns="1"
-            @headerCellInfo="onHeaderCellInfo"
-          >
-            <EColumns>
-              <EColumn
-                v-for="col in displayedColumns"
-                :key="col.field"
-                :field="col.field"
-                :headerText="col.headerText"
-                :textAlign="col.textAlign"
-                :width="col.width"
-              />
-            </EColumns>
-          </EjsGrid>
-        </div>
-      </div>
+
+        <!-- Before first load (itemsFetched is still false), show prompt as well -->
+        <div v-else class="empty-prompt">Please Select a Date Range</div>
+      </section>
     </div>
   </div>
 </template>
 
 <script setup>
-/* eslint-disable */
+import { ref, watchEffect, onMounted } from 'vue'
+import { useAuth } from './composables/useAuth'
+import { useDynamoDB } from './composables/useDynamoDB'
 
-import { ref, onMounted, watch, provide, scrollmodule } from 'vue'
-import { data } from './assets/data.js'
-import { columns } from './assets/columns.js'
-import Multiselect from 'vue-multiselect'
-import {
-  GridComponent as EjsGrid,
-  ColumnDirective as EColumn,
-  ColumnsDirective as EColumns,
-  Group,
-  Sort,
-  Resize,
-  ColumnMenu,
-  Filter,
-  scrollModule,
-} from '@syncfusion/ej2-vue-grids'
+// ─── AUTH SETUP ───────────────────────────────────────────────────────────────
+const { user, signIn, signOut } = useAuth()
 
-const scrollSettings = {
-  width: '100%',
-  height: '100%',
-}
-
-// Method to scroll horizontally to the right
-const scrollRight = () => {
-  if (gridRef.value) {
-    const content = gridRef.value.getContent().firstElementChild
-    if (content) {
-      const currentScrollLeft = content.scrollLeft
-      const newScrollLeft = currentScrollLeft + 500 // Scroll 100px to the right
-      content.scrollTo({
-        left: newScrollLeft,
-        behavior: 'smooth', // Optional: smooth scrolling
-      })
-    }
-  }
-}
-
-// Method to scroll horizontally to the left
-const scrollLeft = () => {
-  if (gridRef.value) {
-    const content = gridRef.value.getContent().firstElementChild
-    if (content) {
-      const currentScrollLeft = content.scrollLeft
-      const newScrollLeft = currentScrollLeft - 500 // Scroll 100px to the left
-      content.scrollTo({
-        left: newScrollLeft,
-        behavior: 'smooth', // Optional: smooth scrolling
-      })
-    }
-  }
-}
-
-// Method to scroll vertically to the top
-const scrollTop = () => {
-  if (gridRef.value) {
-    const content = gridRef.value.getContent().firstElementChild
-    if (content) {
-      content.scrollTo({
-        top: 0,
-        behavior: 'smooth',
-      })
-    }
-  }
-}
-
-// Method to scroll vertically to the bottom
-const scrollBottom = () => {
-  if (gridRef.value) {
-    const content = gridRef.value.getContent().firstElementChild
-    if (content) {
-      content.scrollTo({
-        top: content.scrollHeight,
-        behavior: 'smooth',
-      })
-    }
-  }
-}
-
-const groupOptions = { showGroupedColumn: true }
-const filterSettings = { type: 'CheckBox' }
-provide('grid', [Group, Sort, Resize, ColumnMenu, Filter])
-
-import { DateRangePickerComponent as EjsDaterangepicker } from '@syncfusion/ej2-vue-calendars'
-
-import { TimePickerComponent as EjsTimepicker } from '@syncfusion/ej2-vue-calendars'
-
-const selectedColumns = ref(columns.map((col) => col.field))
-const displayedColumns = ref(columns)
-const gridRef = ref(null) // Add a reference to the Grid component
-
-const updateColumns = () => {
-  displayedColumns.value = columns.filter((col) =>
-    selectedColumns.value.includes(col.field)
-  )
-  gridRef.value.autoFitColumns()
-}
-
-// Automatically fit columns after the grid has been rendered
-const autoFitAllColumns = () => {
-  if (gridRef.value) {
-    gridRef.value.autoFitColumns()
-  }
-}
-
+// As soon as this component mounts, check if there's an authenticated user.
+// If not, redirect to Cognito’s Hosted UI for manual login:
 onMounted(() => {
-  // Call autoFitAllColumns after the grid has been rendered
-  autoFitAllColumns()
+  if (!user.value) {
+    signIn()
+    // After signIn(), Amplify will redirect to Cognito. This component won’t show anything
+    // until the user finishes the Hosted UI flow and returns with tokens.
+  }
+})
+// ────────────────────────────────────────────────────────────────────────────────
+
+// ─── DYNAMODB SETUP ───────────────────────────────────────────────────────────
+const { items, fetchError, itemsFetched, fetchItems } = useDynamoDB()
+
+// Two reactive strings bound to <input type="date">:
+//   e.g. "2021-10-01" → we will convert to UNIX seconds.
+const startDateString = ref('')
+const endDateString = ref('')
+
+// isDateRangeValid is true only when both start+end are set and start<=end.
+const isDateRangeValid = ref(false)
+watchEffect(() => {
+  if (startDateString.value && endDateString.value) {
+    const start = new Date(startDateString.value).getTime()
+    const end = new Date(endDateString.value).getTime()
+    isDateRangeValid.value = start <= end
+  } else {
+    isDateRangeValid.value = false
+  }
 })
 
-watch(selectedColumns, updateColumns)
+// Convert a YYYY-MM-DD string into a UNIX‐seconds string:
+//   e.g. "2021-10-01" → Math.floor(Date.parse("2021-10-01")/1000).toString()
+function toUnixString(isoDateStr) {
+  return Math.floor(new Date(isoDateStr).getTime() / 1000).toString()
+}
 
-const onHeaderCellInfo = (args) => {
-  const columnField = args.cell.column.field
+// When user clicks “Load Data”, call fetchItems() with dynamic KeyConditionExpression values.
+// We need to override the hardcoded start/end in useDynamoDB, so we’ll patch them here.
+// (In useDynamoDB.js, replace the fixed ExpressionAttributeValues with these variables.)
+async function loadData() {
+  if (!user.value) {
+    // In case session expired mid-page, force signIn again:
+    signIn()
+    return
+  }
 
-  const width = args.cell.column.width
-  const headerCell = args.node
+  const unixStart = toUnixString(startDateString.value)
+  const unixEnd = toUnixString(endDateString.value)
 
-  // headerCell.style.width = width
-  headerCell.style.padding = '0 25px 0 10px'
-  headerCell.style.borderColor = 'lightlightgray'
-  headerCell.style.borderRight = '1px solid White'
-  switch (columnField) {
-    case 'Site':
-      headerCell.style.background = 'black'
-      break
-    case 'Truck':
-      headerCell.showColumnMenu = 'false'
+  // Temporarily override DynamoDB query parameters in useDynamoDB.
+  // One way: modify useDynamoDB.fetchItems to accept (start, end).
+  // Here, assume we've updated useDynamoDB to:
+  //    async function fetchItems(startValue, endValue) { ... }
+  // If you haven't updated useDynamoDB yet, see notes below.
 
-      headerCell.style.background = 'black'
-      break
-    case 'Route':
-      headerCell.style.background = 'black'
-      break
-    case 'StartDate':
-      headerCell.style.background = 'rgb(0,0, 150)'
-      break
-    case 'StartTime':
-      headerCell.style.background = 'rgb(0,0, 150)'
-      break
-    case 'StopTime':
-      headerCell.style.background = 'rgb(0,0, 150)'
-      break
-    case 'Duration':
-      headerCell.style.background = 'rgb(0,0, 150)'
-      break
-    case 'Total':
-      headerCell.style.background = 'darkgreen'
-      break
-    case 'Rate':
-      headerCell.style.background = 'darkgreen'
-      break
-    case 'Lat':
-      headerCell.style.background = 'rgb(100,0, 0)'
-      break
-    case 'Lon':
-      headerCell.style.background = 'rgb(100,0, 0)'
-      break
-    case 'Temp':
-      headerCell.style.background = 'lightblue'
-      break
+  try {
+    await fetchItems(unixStart, unixEnd)
+  } catch (err) {
+    console.error('Error fetching items:', err)
   }
 }
+// ────────────────────────────────────────────────────────────────────────────────
 </script>
 
-<style>
-@import '~@syncfusion/ej2-base/styles/material.css';
-@import '~@syncfusion/ej2-buttons/styles/material.css';
-@import '~@syncfusion/ej2-calendars/styles/material.css';
-@import '~@syncfusion/ej2-dropdowns/styles/material.css';
-@import '~@syncfusion/ej2-inputs/styles/material.css';
-@import '~@syncfusion/ej2-navigations/styles/material.css';
-@import '~@syncfusion/ej2-popups/styles/material.css';
-@import '~@syncfusion/ej2-splitbuttons/styles/material.css';
-
-body {
-  background-color: rgb(80, 80, 80);
-}
-
-button {
-  margin: 10px;
-}
-
-.e-grid td.e-selectionbackground {
-  background-color: #00b7ea;
-}
-
-/* .table-container {
-  height: 30%;
-  margin-top: auto;
-  margin-bottom: auto;
-} */
-.page-container {
-  display: block;
-  height: 100vh; /* Full viewport height */
-  width: min-content; /* Full viewport width */
-  margin: auto;
-  overflow: auto;
-}
-
-/* #table-container {
-  overflow: auto;
-}
-#table-div {
-  overflow: auto;
-} */
-
-.e-grid {
-  overflow: auto;
-}
-
-.egrid .e-gridcontent {
-  overflow-y: auto;
-  overflow-x: auto;
-}
-
-.e-grid .e-gridheader {
-  overflow: auto;
-}
-
-.block-container {
+<style scoped>
+.header {
   display: flex;
-  /* flex-grow: 1 1 auto; */
+  justify-content: space-between;
   align-items: center;
-  /* display: block; */
-  /* background-color: black; */
-  background-color: white;
-  margin-top: 2%;
-  height: max-content;
+  margin-bottom: 1rem;
 }
-
-@media (max-width: 800px) {
-  .e-gridheader,
-  .e-gridcontent {
-    overflow: auto;
-  }
-}
-
-/* @media (max-width: 800px) {
-  .e-daterangepicker.e-popup {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    height: 100%;
-    margin-right: auto;
-    margin-bottom: auto;
-  } */
-
-.custom-filter-popup {
-  max-height: 800px;
-  z-index: 2147483647;
-  width: 255px;
-  top: -69.2533px;
-  display: block;
-  visibility: visible;
-  position: absolute; /* Ensure it can float */
-  left: 0px; /* Align to the left */
-}
-
-.e-gridheader {
-  padding-right: 0 !important;
-}
-
-.total-container {
+.controls {
   display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  justify-content: center;
 }
-
-.logo {
-  /* display: inline-block; */
-  width: auto;
-  height: 40px;
-  /* margin-bottom: 10px; */
-
-  margin-left: auto;
-  padding-right: 10px;
-  /* margin-bottom: 15px; */
-  /* margin: 0 auto -20px 10px; */
-
-  /* background-color: white; */
+.table-container {
+  margin-top: 1rem;
 }
-/* .logo-divider {
+table {
   width: 100%;
-  height: 5px;
-  border-bottom: 1px solid black;
-} */
-.dateRangePicker {
-  display: inline-block;
-  width: 300px;
-  height: 40px;
-  background-color: white;
-  /* background-color: lightgreen; */
-  font-family: Arial, Helvetica, sans-serif;
-  padding-left: 25px;
-  margin-top: 0;
-  margin-bottom: 0;
-  padding-right: 20px;
-  /* margin-left: 25px; */
+  border-collapse: collapse;
 }
-.e-popup {
-  /* transform: translate(192px, 5px); */
-  height: fit-content;
+th,
+td {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  text-align: left;
 }
-
-.e-hide {
-  display: none;
+.empty-prompt {
+  text-align: center;
+  font-size: 1.2rem;
+  color: #666;
+  padding: 2rem;
 }
-.e-grid .e-gridheader {
-  border: 1px solid white;
-}
-
-.e-grid .e-headercell {
-  color: black;
-  background-color: lightsteelblue;
-}
-
-.e-grid .e-headercelldiv {
-  font-size: 16px;
-  font-family: Arial, Helvetica, sans-serif;
-  font-weight: normal;
-  color: white;
-  overflow: hidden;
-}
-
-.e-grid .e-columnselection {
-  background-color: #aec2ec;
-}
-
-.e-input-group input.e-input,
-.e-input-group.e-control-wrapper input.e-input {
-  font-size: 16px;
-}
-
-.e-input-group .e-input-group-icon:last-child,
-.e-input-group.e-control-wrapper .e-input-group-icon:last-child {
-  font-size: 12px;
-  margin-right: 0;
-  background-color: white;
-}
-
-.e-calendar .e-content td:hover span.e-day,
-.e-calendar .e-content td:focus span.e-day,
-.e-bigger.e-small .e-calendar .e-content td:hover span.e-day,
-.e-bigger.e-small .e-calendar .e-content td:focus span.e-day {
-  background-color: red;
-  border: 2px solid;
-  padding-right: 0;
-  margin-right: 0;
-  color: #212529;
-}
-
-.e-calendar .e-header .e-title,
-.e-bigger.e-small .e-calendar .e-header .e-title {
-  font-size: 16px;
-}
-
-.e-calendar .e-header span,
-.e-bigger.e-small .e-calendar .e-header span {
-  border: 1px solid;
-  color: chocolate;
-}
-
-/* .e-calendar .e-content thead {
-  background: black;
-} */
-
-.e-grid
-  .e-gridheader
-  .e-icons:not(.e-icon-hide):not(.e-check):not(.e-stop):not(
-    .e-icon-reorderuparrow
-  ):not(.e-icon-reorderdownarrow) {
-  color: white;
-}
-
-.e-grid
-  th.e-headercell[aria-sort='ascending']:not(.e-columnselection)
-  .e-headertext,
-.e-grid
-  th.e-headercell[aria-sort='descending']:not(.e-columnselection)
-  .e-headertext,
-.e-grid th.e-headercell[aria-sort='ascending'] .e-sortfilterdiv,
-.e-grid th.e-headercell[aria-sort='descending'] .e-sortfilterdiv {
-  color: white;
-}
-
-@import '~@syncfusion/ej2-vue-grids/styles/material-lite.css';
 </style>
