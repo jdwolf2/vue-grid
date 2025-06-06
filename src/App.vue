@@ -1,12 +1,5 @@
 <template>
   <div class="total-container">
-    <div>
-      <button @click="login" v-if="!user">Login</button>
-      <button @click="logout" v-else>
-        Logout ({{ user.profile.name || 'User' }})
-      </button>
-    </div>
-
     <div class="page-container">
       <div class="block-container">
         <div class="dateRangePicker">
