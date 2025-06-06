@@ -1,0 +1,63 @@
+{
+  "name": "vue-grid",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint"
+  },
+  "dependencies": {
+    "@syncfusion/ej2-base": "^28.1.33",
+    "@syncfusion/ej2-vue-buttons": "^28.1.39",
+    "@syncfusion/ej2-vue-calendars": "^28.1.39",
+    "@syncfusion/ej2-vue-dropdowns": "^28.1.39",
+    "@syncfusion/ej2-vue-grids": "^28.1.41",
+    "@syncfusion/ej2-vue-inputs": "^28.1.37",
+    "@syncfusion/ej2-vue-navigations": "^28.1.39",
+    "@syncfusion/ej2-vue-popups": "^28.1.39",
+    "@syncfusion/ej2-vue-splitbuttons": "^28.1.37",
+    "@vuepic/vue-datepicker": "^11.0.1",
+    "aws-amplify": "^6.12.3",
+    "aws-sdk": "^2.1692.0",
+    "core-js": "^3.8.3",
+    "vue": "^3.5.13",
+    "vue-multiselect": "^3.2.0",
+    "vue2-daterange-picker": "^0.6.8",
+    "vue3-date-time-picker": "^2.8.3",
+    "vue3-datepicker": "^0.4.0",
+    "vue3-daterange-picker": "^1.0.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.12.16",
+    "@babel/eslint-parser": "^7.12.16",
+    "@vue/cli-plugin-babel": "~5.0.0",
+    "@vue/cli-plugin-eslint": "~5.0.0",
+    "@vue/cli-service": "~5.0.0",
+    "eslint": "^7.32.0",
+    "eslint-plugin-vue": "^8.7.1"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "node": true
+    },
+    "extends": [
+      "plugin:vue/vue3-essential",
+      "eslint:recommended"
+    ],
+    "parserOptions": {
+      "parser": "@babel/eslint-parser"
+    },
+    "rules": {}
+  },
+  "rules": {
+    "no-unused-vars": "off"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ]
+}
