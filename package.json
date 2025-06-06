@@ -22,7 +22,6 @@
     "@syncfusion/ej2-vue-popups": "^28.1.39",
     "@syncfusion/ej2-vue-splitbuttons": "^28.1.37",
     "@vuepic/vue-datepicker": "^11.0.1",
-    "aws-amplify": "^6.12.3",
     "aws-sdk": "^2.1692.0",
     "core-js": "^3.8.3",
     "vue": "^3.5.13",
