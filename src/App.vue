@@ -17,7 +17,7 @@
             :fullScreenMode="false"
           ></ejs-daterangepicker>
         </div>
-        <div>
+        <!-- <div>
           <EjsTimepicker>
             <ejs-timepicker
               v-model="selectedTime"
@@ -29,7 +29,7 @@
               :width="width"
             ></ejs-timepicker>
           </EjsTimepicker>
-        </div>
+        </div> -->
 
         <div class="logo">
           <img src="./assets/tableLogo.jpg" alt="AccuSalt Logo" class="logo" />
